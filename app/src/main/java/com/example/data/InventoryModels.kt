@@ -26,7 +26,8 @@ data class ProductEntity(
     val currency: String, // "BDT" or "USD"
     val iconName: String, // E.g., "color_bag", "dye_packet", "drum", "bottle", etc.
     val entryDate: String = "2026-06-01",
-    val expiryDate: String = "2029-06-01"
+    val expiryDate: String = "2029-06-01",
+    val packageType: String = "Bag" // "Bag", "Drum", "Jar", "Carton", "Bottle"
 ) {
     val totalValue: Double
         get() = currentStock * purchasePrice
@@ -76,6 +77,14 @@ data class TransferEntity(
     val toRack: String,
     val date: String, // YYYY-MM-DD
     val operator: String
+)
+
+@Entity(tableName = "recipe_issues")
+data class RecipeIssueEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val recipeIssueId: String,
+    val date: String, // YYYY-MM-DD
+    val itemsSummary: String
 )
 
 @Dao
@@ -129,6 +138,16 @@ interface InventoryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransfer(transfer: TransferEntity): Long
+
+    // Recipe Issues
+    @Query("SELECT * FROM recipe_issues ORDER BY id DESC")
+    fun getAllRecipeIssues(): Flow<List<RecipeIssueEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRecipeIssue(issue: RecipeIssueEntity): Long
+
+    @Query("SELECT COUNT(*) FROM recipe_issues")
+    suspend fun getRecipeIssuesCount(): Int
 }
 
 @Database(
@@ -137,9 +156,10 @@ interface InventoryDao {
         ConsumptionEntity::class,
         PurchaseEntity::class,
         SupplierEntity::class,
-        TransferEntity::class
+        TransferEntity::class,
+        RecipeIssueEntity::class
     ],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

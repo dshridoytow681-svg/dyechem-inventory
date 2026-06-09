@@ -43,22 +43,27 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InventoryScreen(viewModel: InventoryViewModel) {
+fun InventoryScreen(viewModel: InventoryViewModel, onNavigateTo: (AppScreen) -> Unit = {}) {
     val groupedProductsList by viewModel.groupedProductsList.collectAsState(initial = emptyList())
     val transfersList by viewModel.transfers.collectAsState(initial = emptyList())
     val lang by remember { derivedStateOf { viewModel.appLanguage.value } }
     val role by remember { derivedStateOf { viewModel.userRole.value } }
 
     var showAddDialog by remember { mutableStateOf(false) }
+    var showGeneralAddStockDialog by remember { mutableStateOf(false) }
+    var showGeneralStockOutDialog by remember { mutableStateOf(false) }
     var selectedGroupedProduct by remember { mutableStateOf<GroupedProduct?>(null) }
 
     // Quick transaction shortcuts linked to particular lots
     var showLotDispatchDialog by remember { mutableStateOf<ProductEntity?>(null) }
     var showLotInwardDialog by remember { mutableStateOf<ProductEntity?>(null) }
     var showLotTransferDialog by remember { mutableStateOf<ProductEntity?>(null) }
+    var showEditLotDialog by remember { mutableStateOf<ProductEntity?>(null) }
+    var showDeleteConfirmationDialog by remember { mutableStateOf<ProductEntity?>(null) }
     
     // Toggle for FIFO transaction vs single-lot
     var showProductFifoDispatchDialog by remember { mutableStateOf<GroupedProduct?>(null) }
+    var showAddNewLotDialog by remember { mutableStateOf(false) }
 
     val activeFilter = viewModel.activeCategoryFilter.value
     val query = viewModel.searchQuery.value.trim().lowercase()
@@ -149,6 +154,13 @@ fun InventoryScreen(viewModel: InventoryViewModel) {
                         Icon(Icons.Default.Close, contentDescription = "Clear")
                     }
                 }
+                IconButton(onClick = { onNavigateTo(AppScreen.VOICE) }) {
+                    Icon(
+                        imageVector = Icons.Default.Mic,
+                        contentDescription = "Voice Search",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
 
@@ -215,14 +227,47 @@ fun InventoryScreen(viewModel: InventoryViewModel) {
                 )
 
                 if (role != AppRole.VIEWER) {
-                    Button(
-                        onClick = { showAddDialog = true },
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (lang == AppLanguage.EN) "New Lot" else "নতুন লট এন্ট্রি", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        // 1. New Item (Register product class)
+                        Button(
+                            onClick = { showAddDialog = true },
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("new_item_button")
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(if (lang == AppLanguage.EN) "New" else "নতুন", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        // 2. Add Stock
+                        Button(
+                            onClick = { showGeneralAddStockDialog = true },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = ColorGreen),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("add_stock_button")
+                        ) {
+                            Icon(Icons.Default.ArrowUpward, contentDescription = null, modifier = Modifier.size(13.dp), tint = Color.White)
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(if (lang == AppLanguage.EN) "In" else "স্টক ইন", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+
+                        // 3. Stock Out
+                        Button(
+                            onClick = { showGeneralStockOutDialog = true },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = ColorRed),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("stock_out_button")
+                        ) {
+                            Icon(Icons.Default.ArrowDownward, contentDescription = null, modifier = Modifier.size(13.dp), tint = Color.White)
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(if (lang == AppLanguage.EN) "Out" else "আউট", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
                     }
                 }
             }
@@ -298,16 +343,32 @@ fun InventoryScreen(viewModel: InventoryViewModel) {
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 
-                // FIFO Action trigger gate
-                if (liveLots.size > 1 && role != AppRole.VIEWER) {
-                    Button(
-                        onClick = { showProductFifoDispatchDialog = gp },
-                        colors = ButtonDefaults.buttonColors(containerColor = ColorOrange),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(Icons.Default.AltRoute, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("FIFO Dispatch", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (role != AppRole.VIEWER) {
+                        Button(
+                            onClick = { showAddNewLotDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add Lot", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    // FIFO Action trigger gate
+                    if (liveLots.size > 1 && role != AppRole.VIEWER) {
+                        Button(
+                            onClick = { showProductFifoDispatchDialog = gp },
+                            colors = ButtonDefaults.buttonColors(containerColor = ColorOrange),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Icon(Icons.Default.AltRoute, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("FIFO Dispatch", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -432,9 +493,19 @@ fun InventoryScreen(viewModel: InventoryViewModel) {
                                     }
                                 }
 
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text("${lot.currentStock} ${lot.unit}", fontWeight = FontWeight.Black, fontSize = 17.sp, color = if (isCritical) ColorRed else ColorGreen)
-                                    Text("Remaining", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text("${lot.currentStock} ${lot.unit}", fontWeight = FontWeight.Black, fontSize = 17.sp, color = if (isCritical) ColorRed else ColorGreen)
+                                        Text("Remaining", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    if (role == AppRole.ADMIN || role == AppRole.MANAGER) {
+                                        IconButton(onClick = { showEditLotDialog = lot }, modifier = Modifier.size(28.dp)) {
+                                            Icon(Icons.Default.Edit, contentDescription = "Edit Lot", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                        }
+                                        IconButton(onClick = { showDeleteConfirmationDialog = lot }, modifier = Modifier.size(28.dp)) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete Lot", tint = ColorRed, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
                                 }
                             }
 
@@ -447,6 +518,10 @@ fun InventoryScreen(viewModel: InventoryViewModel) {
                                 Row(modifier = Modifier.fillMaxWidth()) {
                                     Text("Rack Assignment: ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Text("${lot.rackNumber} (${lot.warehouseLocation})", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                                Row(modifier = Modifier.fillMaxWidth()) {
+                                    Text("Package Type: ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(lot.packageType, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
                                 }
                                 Row(modifier = Modifier.fillMaxWidth()) {
                                     Text("Entry / Expiry: ", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -569,7 +644,7 @@ fun InventoryScreen(viewModel: InventoryViewModel) {
 
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
-            title = { Text(if (lang == AppLanguage.EN) "Register New Lot" else "নতুন কোড ও লট রেজিস্ট্রি", fontWeight = FontWeight.Bold) },
+            title = { Text(if (lang == AppLanguage.EN) "Register New Product" else "নতুন পণ্য রেজিস্ট্রি", fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     modifier = Modifier
@@ -678,6 +753,35 @@ fun InventoryScreen(viewModel: InventoryViewModel) {
                             Text("USD ($)")
                         }
                     }
+
+                    Text("Packaging Type Icon:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val iconOptions = listOf("Bag", "Drum", "Bottle", "Jar", "Carton", "Container")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        iconOptions.forEach { iconOpt ->
+                            val isSelected = iconName.equals(iconOpt, ignoreCase = true)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable { iconName = iconOpt.lowercase() }
+                                    .padding(vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = iconOpt,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -701,18 +805,121 @@ fun InventoryScreen(viewModel: InventoryViewModel) {
                                 lowStockThreshold = rawThreshold,
                                 purchasePrice = rawPrice,
                                 currency = currency,
-                                iconName = iconName
+                                iconName = iconName,
+                                packageType = iconName.replaceFirstChar { it.uppercase() }
                             ) {
                                 showAddDialog = false
                             }
                         }
                     }
                 ) {
-                    Text("Save Lot")
+                    Text("Save Product")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showAddDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // --- FORM 1.5: ADD NEW LOT TO PRODUCT DIALOG ---
+    if (showAddNewLotDialog && selectedGroupedProduct != null) {
+        val gp = selectedGroupedProduct!!
+        val firstLot = gp.lots.firstOrNull()
+        
+        var editLotNumber by remember { mutableStateOf("") }
+        var editRackNumber by remember { mutableStateOf("") }
+        var editQuantity by remember { mutableStateOf("") }
+        var editUnit by remember { mutableStateOf(gp.unit) }
+        var editBatchNumber by remember { mutableStateOf("") }
+        var editLocation by remember { mutableStateOf(firstLot?.warehouseLocation ?: "Main Store") }
+        
+        AlertDialog(
+            onDismissRequest = { showAddNewLotDialog = false },
+            title = { Text("Add New Lot: ${gp.name}", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedTextField(
+                        value = editLotNumber,
+                        onValueChange = { editLotNumber = it },
+                        label = { Text("Lot Number") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editBatchNumber,
+                        onValueChange = { editBatchNumber = it },
+                        label = { Text("Batch Number (Optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editRackNumber,
+                        onValueChange = { editRackNumber = it },
+                        label = { Text("Rack Coordinate") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editLocation,
+                        onValueChange = { editLocation = it },
+                        label = { Text("Warehouse Location") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = editQuantity,
+                            onValueChange = { editQuantity = it },
+                            label = { Text("Quantity") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1.1f)
+                        )
+                        OutlinedTextField(
+                            value = editUnit,
+                            onValueChange = { editUnit = it },
+                            label = { Text("Unit") },
+                            modifier = Modifier.weight(0.9f)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val qty = editQuantity.toDoubleOrNull() ?: 0.0
+                        if (editLotNumber.isNotEmpty()) {
+                            viewModel.addProduct(
+                                name = gp.name,
+                                code = gp.code,
+                                category = gp.category,
+                                brand = gp.brand,
+                                lotNumber = editLotNumber,
+                                batchNumber = editBatchNumber.ifEmpty { "BATCH-A" },
+                                rackNumber = editRackNumber.ifEmpty { "Rack A-01" },
+                                warehouseLocation = editLocation.ifEmpty { "Main Warehouse" },
+                                unit = editUnit.ifEmpty { gp.unit },
+                                openingStock = qty,
+                                lowStockThreshold = firstLot?.lowStockThreshold ?: 10.0,
+                                purchasePrice = firstLot?.purchasePrice ?: 0.0,
+                                currency = firstLot?.currency ?: "BDT",
+                                iconName = gp.iconName,
+                                packageType = gp.packageType
+                            ) {
+                                showAddNewLotDialog = false
+                            }
+                        }
+                    }
+                ) {
+                    Text("Add Lot")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddNewLotDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -983,6 +1190,480 @@ fun InventoryScreen(viewModel: InventoryViewModel) {
             }
         )
     }
+
+    // --- FORM 5B: GENERAL ADD STOCK VIA SEARCHABLE SELECTOR ---
+    if (showGeneralAddStockDialog) {
+        var selectedProduct by remember { mutableStateOf<GroupedProduct?>(null) }
+        var selectedLotEntity by remember { mutableStateOf<ProductEntity?>(null) }
+        
+        var isNewLotMode by remember { mutableStateOf(false) }
+        var newLotNoInput by remember { mutableStateOf("") }
+        var newRackNoInput by remember { mutableStateOf("") }
+        var newLocInput by remember { mutableStateOf("") }
+        
+        var addStockStr by remember { mutableStateOf("") }
+        var invoiceNum by remember { mutableStateOf("") }
+        var supName by remember { mutableStateOf("") }
+        var priceStr by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showGeneralAddStockDialog = false },
+            title = {
+                Text(
+                    text = if (lang == AppLanguage.EN) "Inward Stock Booking" else "স্টক বুকিং (ইনওয়ার্ড)",
+                    fontWeight = FontWeight.ExtraBold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (lang == AppLanguage.EN) "Select the product you purchased:" else "ক্রয়কৃত পণ্যটি চয়ন করুন:",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Integrated Searchable selector component
+                    SearchableProductSelector(
+                        lang = lang,
+                        groupedProducts = groupedProductsList,
+                        selectedProduct = selectedProduct,
+                        selectedLot = selectedLotEntity,
+                        onProductSelected = { gp, lot ->
+                            selectedProduct = gp
+                            selectedLotEntity = lot
+                            if (lot != null) {
+                                priceStr = lot.purchasePrice.toString()
+                                supName = lot.brand
+                            }
+                        },
+                        onLotSelected = { lot ->
+                            selectedLotEntity = lot
+                            priceStr = lot.purchasePrice.toString()
+                            supName = lot.brand
+                        }
+                    )
+
+                    if (selectedProduct != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        // Option to add as a brand-new lot
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isNewLotMode = !isNewLotMode }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Checkbox(checked = isNewLotMode, onCheckedChange = { isNewLotMode = it })
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (lang == AppLanguage.EN) "Add as a Brand-New Lot" else "নতুন একটি ভিন্ন লটে স্টক করুন",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        if (isNewLotMode) {
+                            OutlinedTextField(
+                                value = newLotNoInput,
+                                onValueChange = { newLotNoInput = it },
+                                label = { Text(if (lang == AppLanguage.EN) "New Lot Number" else "নতুন লট নম্বর") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = newRackNoInput,
+                                    onValueChange = { newRackNoInput = it },
+                                    label = { Text(if (lang == AppLanguage.EN) "Rack Number" else "র‍্যাক নম্বর") },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedTextField(
+                                    value = newLocInput,
+                                    onValueChange = { newLocInput = it },
+                                    label = { Text(if (lang == AppLanguage.EN) "Warehouse Area" else "গুদাম এলাকা") },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = addStockStr,
+                            onValueChange = { addStockStr = it },
+                            label = { Text(if (lang == AppLanguage.EN) "Inward Stock Quantity (${selectedProduct?.unit ?: ""})" else "পরিমাণ (${selectedProduct?.unit ?: ""})") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = invoiceNum,
+                            onValueChange = { invoiceNum = it },
+                            label = { Text(if (lang == AppLanguage.EN) "Invoice/Receipt Reference No" else "চালান / রসিদ রেফারেন্স নং") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = supName,
+                            onValueChange = { supName = it },
+                            label = { Text(if (lang == AppLanguage.EN) "Supplier Code / Name" else "সরবরাহকারী / প্রতিষ্ঠান") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val product = selectedProduct
+                        val qty = addStockStr.toDoubleOrNull() ?: 0.0
+                        if (product != null && qty > 0.0) {
+                            if (isNewLotMode) {
+                                val lotNo = newLotNoInput.ifEmpty { "LOT-NEW" }
+                                val sampleLot = product.lots.firstOrNull()
+                                viewModel.addProduct(
+                                    name = product.name,
+                                    code = sampleLot?.code ?: "CODE",
+                                    category = product.category,
+                                    brand = supName.ifEmpty { product.brand },
+                                    lotNumber = lotNo,
+                                    batchNumber = "B-NEW",
+                                    rackNumber = newRackNoInput.ifEmpty { sampleLot?.rackNumber ?: "A-01" },
+                                    warehouseLocation = newLocInput.ifEmpty { sampleLot?.warehouseLocation ?: "Floor" },
+                                    unit = product.unit,
+                                    openingStock = qty,
+                                    lowStockThreshold = sampleLot?.lowStockThreshold ?: 50.0,
+                                    purchasePrice = priceStr.toDoubleOrNull() ?: sampleLot?.purchasePrice ?: 0.0,
+                                    currency = sampleLot?.currency ?: "BDT",
+                                    iconName = sampleLot?.iconName ?: "science",
+                                    packageType = sampleLot?.packageType ?: "Bag",
+                                    onComplete = {
+                                        showGeneralAddStockDialog = false
+                                    }
+                                )
+                            } else {
+                                val lot = selectedLotEntity ?: product.lots.firstOrNull()
+                                if (lot != null) {
+                                    viewModel.recordPurchase(
+                                        productId = lot.id,
+                                        supplierName = supName.ifEmpty { lot.brand },
+                                        invoiceNumber = invoiceNum.ifEmpty { "REC-AUTO" },
+                                        quantity = qty,
+                                        unitPrice = priceStr.toDoubleOrNull() ?: lot.purchasePrice,
+                                        currency = lot.currency,
+                                        onComplete = { success ->
+                                            if (success) {
+                                                showGeneralAddStockDialog = false
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ColorGreen),
+                    enabled = selectedProduct != null && addStockStr.isNotEmpty()
+                ) {
+                    Text(if (lang == AppLanguage.EN) "Complete stock-in" else "স্টক বুকিং সম্পন্ন করুন")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGeneralAddStockDialog = false }) { Text(if (lang == AppLanguage.EN) "Dismiss" else "বাতিল") }
+            }
+        )
+    }
+
+    // --- FORM 5C: GENERAL STOCK OUT VIA SEARCHABLE SELECTOR ---
+    if (showGeneralStockOutDialog) {
+        var selectedProduct by remember { mutableStateOf<GroupedProduct?>(null) }
+        var selectedLotEntity by remember { mutableStateOf<ProductEntity?>(null) }
+        
+        var isFifoMode by remember { mutableStateOf(false) }
+        var dispatchQtyInput by remember { mutableStateOf("") }
+        var deptInput by remember { mutableStateOf("Dyeing Prep") }
+        var operatorInput by remember { mutableStateOf("Shift Engr") }
+        var notesInput by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showGeneralStockOutDialog = false },
+            title = {
+                Text(
+                    text = if (lang == AppLanguage.EN) "Checkout / Stock Out (Dispatch)" else "স্টক বিতরণ করুন (আউট)",
+                    fontWeight = FontWeight.ExtraBold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (lang == AppLanguage.EN) "Select the product to dispatch:" else "বিতরণযোগ্য উপাদানটি চয়ন করুন:",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Integrated Searchable selector component
+                    SearchableProductSelector(
+                        lang = lang,
+                        groupedProducts = groupedProductsList,
+                        selectedProduct = selectedProduct,
+                        selectedLot = if (isFifoMode) null else selectedLotEntity,
+                        onProductSelected = { gp, lot ->
+                            selectedProduct = gp
+                            selectedLotEntity = lot
+                        },
+                        onLotSelected = { lot ->
+                            selectedLotEntity = lot
+                            isFifoMode = false
+                        }
+                    )
+
+                    if (selectedProduct != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Toggle Options between Single Lot checkout and FIFO auto dispersion
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isFifoMode = !isFifoMode }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Checkbox(checked = isFifoMode, onCheckedChange = { isFifoMode = it })
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Column {
+                                Text(
+                                    text = if (lang == AppLanguage.EN) "Enable FIFO Auto Dispatch" else "ফিফো (FIFO) পর্যায়ক্রমিক বিতরণ সক্রিয় রাখুন",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = if (lang == AppLanguage.EN) "Consumes automatically from oldest lots first" else "সবচেয়ে পুরোনো ব্যাচ থেকে ক্রমানুসারে স্বয়ংক্রিয়ভাবে স্টক আউট হবে",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = dispatchQtyInput,
+                            onValueChange = { dispatchQtyInput = it },
+                            label = { Text(if (lang == AppLanguage.EN) "Dispatch Quantity" else "বিতরণের পরিমাণ") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = deptInput,
+                            onValueChange = { deptInput = it },
+                            label = { Text(if (lang == AppLanguage.EN) "Requesting Department" else "গ্রহীতা বিভাগ / সেকশন") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = operatorInput,
+                            onValueChange = { operatorInput = it },
+                            label = { Text(if (lang == AppLanguage.EN) "Operator Name / ID" else "বিতরণকারী কর্মকর্তা / অপারেটর") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = notesInput,
+                            onValueChange = { notesInput = it },
+                            label = { Text(if (lang == AppLanguage.EN) "Remarks / Reference Note" else "মন্তব্য / রেফারেন্স") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val product = selectedProduct
+                        val qty = dispatchQtyInput.toDoubleOrNull() ?: 0.0
+                        if (product != null && qty > 0.0) {
+                            if (isFifoMode) {
+                                // FIFO Dispatch!
+                                viewModel.recordFifoConsumption(
+                                    productName = product.name,
+                                    quantity = qty,
+                                    department = deptInput.ifEmpty { "Dyeing" },
+                                    operator = operatorInput.ifEmpty { "Operator" },
+                                    notes = notesInput.ifEmpty { "FIFO checkout" },
+                                    onComplete = { success ->
+                                        if (success) {
+                                            showGeneralStockOutDialog = false
+                                        }
+                                    }
+                                )
+                            } else {
+                                // Single lot checkout!
+                                val lot = selectedLotEntity ?: product.lots.firstOrNull()
+                                if (lot != null) {
+                                    viewModel.recordLotConsumption(
+                                        lotId = lot.id,
+                                        quantity = qty,
+                                        department = deptInput.ifEmpty { "Dyeing" },
+                                        operator = operatorInput.ifEmpty { "Operator" },
+                                        notes = notesInput.ifEmpty { "Lot checkout" },
+                                        onComplete = { success ->
+                                            if (success) {
+                                                showGeneralStockOutDialog = false
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ColorRed),
+                    enabled = selectedProduct != null && dispatchQtyInput.isNotEmpty()
+                ) {
+                    Text(if (lang == AppLanguage.EN) "Confirm dispatch" else "বিতরণ সম্পন্ন করুন")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGeneralStockOutDialog = false }) { Text(if (lang == AppLanguage.EN) "Dismiss" else "বাতিল") }
+            }
+        )
+    }
+
+    // --- FORM 6: EDIT LOT DETAILS ---
+    if (showEditLotDialog != null) {
+        val lot = showEditLotDialog!!
+        var name by remember { mutableStateOf(lot.name) }
+        var lotNumber by remember { mutableStateOf(lot.lotNumber) }
+        var rackNumber by remember { mutableStateOf(lot.rackNumber) }
+        var currentStockStr by remember { mutableStateOf(lot.currentStock.toString()) }
+        var lowStockThresholdStr by remember { mutableStateOf(lot.lowStockThreshold.toString()) }
+        var purchasePriceStr by remember { mutableStateOf(lot.purchasePrice.toString()) }
+        var currency by remember { mutableStateOf(lot.currency) }
+
+        AlertDialog(
+            onDismissRequest = { showEditLotDialog = null },
+            title = { Text("Edit Lot Registry Details", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Product Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = lotNumber,
+                        onValueChange = { lotNumber = it },
+                        label = { Text("Lot Number") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = rackNumber,
+                        onValueChange = { rackNumber = it },
+                        label = { Text("Rack coordinate / Location") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = currentStockStr,
+                        onValueChange = { currentStockStr = it },
+                        label = { Text("Current Stock Quantity") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = lowStockThresholdStr,
+                        onValueChange = { lowStockThresholdStr = it },
+                        label = { Text("Low Stock Threshold limit") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = purchasePriceStr,
+                        onValueChange = { purchasePriceStr = it },
+                        label = { Text("Purchase Unit price") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Currency: ")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = currency == "BDT", onClick = { currency = "BDT" })
+                            Text("BDT (৳)")
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = currency == "USD", onClick = { currency = "USD" })
+                            Text("USD ($)")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val stockVal = currentStockStr.toDoubleOrNull() ?: lot.currentStock
+                        val rawThreshold = lowStockThresholdStr.toDoubleOrNull() ?: lot.lowStockThreshold
+                        val rawPrice = purchasePriceStr.toDoubleOrNull() ?: lot.purchasePrice
+                        if (name.isNotEmpty() && lotNumber.isNotEmpty()) {
+                            val updatedProduct = lot.copy(
+                                name = name,
+                                lotNumber = lotNumber,
+                                rackNumber = rackNumber,
+                                currentStock = stockVal,
+                                openingStock = stockVal,
+                                lowStockThreshold = rawThreshold,
+                                purchasePrice = rawPrice,
+                                currency = currency
+                            )
+                            viewModel.modifyProduct(updatedProduct) {
+                                showEditLotDialog = null
+                            }
+                        }
+                    }
+                ) {
+                    Text("Save Modifications")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditLotDialog = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // --- FORM 7: DELETE CONFIRMATION DIALOG ---
+    if (showDeleteConfirmationDialog != null) {
+        val lot = showDeleteConfirmationDialog!!
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmationDialog = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = ColorRed)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("De-Register Lot?", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Text("Are you sure you want to delete product \"${lot.name}\" Lot \"${lot.lotNumber}\"? This will delete the lot permanently.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteProduct(lot) {
+                            showDeleteConfirmationDialog = null
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ColorRed)
+                ) {
+                    Text("Confirm Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmationDialog = null }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
 // 1st Level aggregate Product Card displaying cartoon logo, composite stocks, and total lots count
@@ -1024,10 +1705,15 @@ fun GroupedProductCard(gp: GroupedProduct, lang: AppLanguage, onClick: () -> Uni
                         .padding(8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    val iconType = when (gp.iconName) {
-                        "color_bag" -> LocalCartoonIconType.DYE_BAG
-                        "drum" -> LocalCartoonIconType.CHEM_DRUM
-                        "bottle" -> LocalCartoonIconType.DISPATCH_METER
+                    val iconType = when (gp.iconName.lowercase()) {
+                        "bag" -> LocalCartoonIconType.BAG
+                        "drum" -> LocalCartoonIconType.DRUM
+                        "bottle" -> LocalCartoonIconType.BOTTLE
+                        "jar" -> LocalCartoonIconType.JAR
+                        "carton" -> LocalCartoonIconType.CARTON
+                        "container" -> LocalCartoonIconType.CONTAINER
+                        "color_bag" -> LocalCartoonIconType.BAG
+                        "drum_chem" -> LocalCartoonIconType.DRUM
                         else -> LocalCartoonIconType.WAREHOUSE
                     }
                     LocalCartoonDrawnIcon(type = iconType, color = if (gp.category == "Dye") ColorGreen else ColorBlueAccent)
@@ -1042,15 +1728,21 @@ fun GroupedProductCard(gp: GroupedProduct, lang: AppLanguage, onClick: () -> Uni
                         fontSize = 16.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(gp.brand, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(8.dp))
                         Box(
                             modifier = Modifier
                                 .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(8.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text("${gp.lots.size} Lots", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(gp.packageType, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
                         }
                     }
                 }
@@ -1094,7 +1786,8 @@ fun GroupedProductCard(gp: GroupedProduct, lang: AppLanguage, onClick: () -> Uni
 }
 
 enum class LocalCartoonIconType {
-    WAREHOUSE, DYE_BAG, CHEM_DRUM, WARNING_BELL, DISPATCH_METER, CHART_LINE
+    WAREHOUSE, DYE_BAG, CHEM_DRUM, WARNING_BELL, DISPATCH_METER, CHART_LINE,
+    BAG, DRUM, BOTTLE, JAR, CARTON, CONTAINER
 }
 
 @Composable
@@ -1123,7 +1816,7 @@ fun LocalCartoonDrawnIcon(type: LocalCartoonIconType, color: Color) {
                     size = androidx.compose.ui.geometry.Size(w * 0.24f, h * 0.25f)
                 )
             }
-            LocalCartoonIconType.DYE_BAG -> {
+            LocalCartoonIconType.DYE_BAG, LocalCartoonIconType.BAG -> {
                 val sackPath = androidx.compose.ui.graphics.Path().apply {
                     moveTo(w * 0.3f, h * 0.2f)
                     cubicTo(w * 0.15f, h * 0.5f, w * 0.15f, h * 0.85f, w * 0.5f, h * 0.9f)
@@ -1133,7 +1826,7 @@ fun LocalCartoonDrawnIcon(type: LocalCartoonIconType, color: Color) {
                 drawPath(path = sackPath, color = color)
                 drawCircle(color = Color.White.copy(alpha = 0.9f), radius = w * 0.08f, center = Offset(w * 0.5f, h * 0.25f))
             }
-            LocalCartoonIconType.CHEM_DRUM -> {
+            LocalCartoonIconType.CHEM_DRUM, LocalCartoonIconType.DRUM -> {
                 drawRoundRect(
                     color = color,
                     topLeft = Offset(w * 0.25f, h * 0.2f),
@@ -1151,6 +1844,82 @@ fun LocalCartoonDrawnIcon(type: LocalCartoonIconType, color: Color) {
                     start = Offset(w * 0.25f, h * 0.65f),
                     end = Offset(w * 0.75f, h * 0.65f),
                     strokeWidth = 3f
+                )
+            }
+            LocalCartoonIconType.BOTTLE -> {
+                val neckPath = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(w * 0.4f, h * 0.15f)
+                    lineTo(w * 0.6f, h * 0.15f)
+                    lineTo(w * 0.6f, h * 0.35f)
+                    lineTo(w * 0.8f, h * 0.5f)
+                    lineTo(w * 0.8f, h * 0.85f)
+                    lineTo(w * 0.2f, h * 0.85f)
+                    lineTo(w * 0.2f, h * 0.5f)
+                    lineTo(w * 0.4f, h * 0.35f)
+                    close()
+                }
+                drawPath(path = neckPath, color = color)
+                drawRect(
+                    color = Color.White.copy(alpha = 0.5f),
+                    topLeft = Offset(w * 0.45f, h * 0.1f),
+                    size = androidx.compose.ui.geometry.Size(w * 0.1f, h * 0.08f)
+                )
+            }
+            LocalCartoonIconType.JAR -> {
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(w * 0.22f, h * 0.32f),
+                    size = androidx.compose.ui.geometry.Size(w * 0.56f, h * 0.56f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
+                )
+                drawRect(
+                    color = Color.White.copy(alpha = 0.9f),
+                    topLeft = Offset(w * 0.32f, h * 0.2f),
+                    size = androidx.compose.ui.geometry.Size(w * 0.36f, h * 0.12f)
+                )
+            }
+            LocalCartoonIconType.CARTON -> {
+                val boxPath = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(w * 0.5f, h * 0.15f)
+                    lineTo(w * 0.85f, h * 0.32f)
+                    lineTo(w * 0.85f, h * 0.72f)
+                    lineTo(w * 0.5f, h * 0.9f)
+                    lineTo(w * 0.15f, h * 0.72f)
+                    lineTo(w * 0.15f, h * 0.32f)
+                    close()
+                }
+                drawPath(path = boxPath, color = color)
+                drawLine(
+                    color = Color.White.copy(alpha = 0.6f),
+                    start = Offset(w * 0.5f, h * 0.15f),
+                    end = Offset(w * 0.5f, h * 0.9f),
+                    strokeWidth = 3f
+                )
+                drawLine(
+                    color = Color.White.copy(alpha = 0.6f),
+                    start = Offset(w * 0.5f, h * 0.52f),
+                    end = Offset(w * 0.15f, h * 0.32f),
+                    strokeWidth = 3f
+                )
+                drawLine(
+                    color = Color.White.copy(alpha = 0.6f),
+                    start = Offset(w * 0.5f, h * 0.52f),
+                    end = Offset(w * 0.85f, h * 0.32f),
+                    strokeWidth = 3f
+                )
+            }
+            LocalCartoonIconType.CONTAINER -> {
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(w * 0.15f, h * 0.3f),
+                    size = androidx.compose.ui.geometry.Size(w * 0.7f, h * 0.55f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
+                )
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.6f),
+                    topLeft = Offset(w * 0.11f, h * 0.22f),
+                    size = androidx.compose.ui.geometry.Size(w * 0.78f, h * 0.1f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
                 )
             }
             LocalCartoonIconType.WARNING_BELL -> {

@@ -9,6 +9,7 @@ class InventoryRepository(private val dao: InventoryDao) {
     val allPurchases: Flow<List<PurchaseEntity>> = dao.getAllPurchases()
     val allSuppliers: Flow<List<SupplierEntity>> = dao.getAllSuppliers()
     val allTransfers: Flow<List<TransferEntity>> = dao.getAllTransfers()
+    val allRecipeIssues: Flow<List<RecipeIssueEntity>> = dao.getAllRecipeIssues()
 
     fun searchProducts(query: String): Flow<List<ProductEntity>> = dao.searchProducts(query)
 
@@ -66,4 +67,6 @@ class InventoryRepository(private val dao: InventoryDao) {
 
     suspend fun insertSupplier(supplier: SupplierEntity): Long = dao.insertSupplier(supplier)
     suspend fun insertTransfer(transfer: TransferEntity): Long = dao.insertTransfer(transfer)
+    suspend fun insertRecipeIssue(issue: RecipeIssueEntity): Long = dao.insertRecipeIssue(issue)
+    suspend fun getRecipeIssuesCount(): Int = dao.getRecipeIssuesCount()
 }

@@ -31,7 +31,7 @@ import com.example.ui.theme.ColorRed
 import com.example.ui.theme.ColorBlueAccent
 
 enum class AppScreen {
-    DASHBOARD, INVENTORY, CONSUMPTION, PURCHASES, SCANNER, VOICE, ANALYTICS
+    DASHBOARD, INVENTORY, CONSUMPTION, PURCHASES, SCANNER, VOICE, ANALYTICS, RACK_VIEW, AI_ASSISTANT
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,7 +83,7 @@ fun MainAppLayout(
                     NavigationRailItem(
                         selected = currentScreen == AppScreen.CONSUMPTION,
                         onClick = { currentScreen = AppScreen.CONSUMPTION },
-                        icon = { Icon(Icons.Default.WaterDrop, "Consumption") },
+                        icon = { Icon(Icons.Default.Assignment, "Recipe Issue") },
                         label = { Text(Localization.get("nav_consumption", lang), fontSize = 10.sp) }
                     )
                     NavigationRailItem(
@@ -323,10 +323,10 @@ fun MainAppLayout(
                                 label = { Text(Localization.get("nav_scanner", lang), fontSize = 10.sp) }
                             )
                             NavigationBarItem(
-                                selected = currentScreen == AppScreen.VOICE,
-                                onClick = { currentScreen = AppScreen.VOICE },
-                                icon = { Icon(Icons.Default.Mic, null) },
-                                label = { Text(Localization.get("nav_voice", lang), fontSize = 10.sp) }
+                                selected = currentScreen == AppScreen.CONSUMPTION,
+                                onClick = { currentScreen = AppScreen.CONSUMPTION },
+                                icon = { Icon(Icons.Default.Assignment, null) },
+                                label = { Text(Localization.get("nav_consumption", lang), fontSize = 10.sp) }
                             )
                             NavigationBarItem(
                                 selected = currentScreen == AppScreen.ANALYTICS,
@@ -355,12 +355,14 @@ fun MainAppLayout(
                                 viewModel = viewModel,
                                 onNavigateTo = { currentScreen = it }
                             )
-                            AppScreen.INVENTORY -> InventoryScreen(viewModel = viewModel)
-                            AppScreen.CONSUMPTION -> ConsumptionScreen(viewModel = viewModel)
+                            AppScreen.INVENTORY -> InventoryScreen(viewModel = viewModel, onNavigateTo = { currentScreen = it })
+                            AppScreen.CONSUMPTION -> RecipeIssueScreen(viewModel = viewModel)
                             AppScreen.PURCHASES -> PurchaseScreen(viewModel = viewModel)
                             AppScreen.SCANNER -> ScannerScreen(viewModel = viewModel)
                             AppScreen.VOICE -> VoiceScreen(viewModel = viewModel)
                             AppScreen.ANALYTICS -> AnalyticsScreen(viewModel = viewModel)
+                            AppScreen.RACK_VIEW -> RackViewScreen(viewModel = viewModel, onNavigateBack = { currentScreen = AppScreen.DASHBOARD })
+                            AppScreen.AI_ASSISTANT -> AiAssistantScreen(viewModel = viewModel, onNavigateBack = { currentScreen = AppScreen.DASHBOARD })
                         }
                     }
                 }

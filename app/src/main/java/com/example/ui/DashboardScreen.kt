@@ -211,13 +211,172 @@ fun DashboardScreen(
             }
         }
 
-        // --- QUICK GATES: SCANNER AND VOICE ---
+        // --- 4. Recipe Issue Card ---
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigateTo(AppScreen.CONSUMPTION) }
+                .testTag("recipe_issue_card")
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(ColorOrange.copy(alpha = 0.12f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Assignment,
+                        contentDescription = "Recipe Issue",
+                        tint = ColorOrange,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (lang == AppLanguage.EN) "🧾 Recipe Issue" else "🧾 রেসিপি স্টক ইস্যু",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (lang == AppLanguage.EN) 
+                            "Issue raw materials to production & update stocks automatically" 
+                            else "উৎপাদনে কাঁচামাল প্রদান ও স্বয়ংক্রিয়ভাবে স্টক আপডেট করুন",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = ColorOrange,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        // --- 5. Rack Locations Card ---
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigateTo(AppScreen.RACK_VIEW) }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(ColorBlueAccent.copy(alpha = 0.12f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.GridView,
+                        contentDescription = "Rack Locations",
+                        tint = ColorBlueAccent,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (lang == AppLanguage.EN) "📦 Rack Locations" else "📦 র‍্যাক লোকেশনস",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (lang == AppLanguage.EN) "Warehouse Location Tracking & Bin Map" else "ওয়্যারহাউজ বিন ট্র্যাকিং এবং ম্যাপ",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = ColorBlueAccent,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
         Text(
             text = if (lang == AppLanguage.EN) "Intelligent Hub Utilities" else "স্মার্ট পরিচালনা টুলস",
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
             color = MaterialTheme.colorScheme.onSurface
         )
+
+        // --- AI Assistant Module Card ---
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigateTo(AppScreen.AI_ASSISTANT) }
+                .testTag("ai_assistant_card")
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = "AI Assistant",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (lang == AppLanguage.EN) "✨ AI Assistant" else "✨ এআই অ্যাসিস্ট্যান্ট",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (lang == AppLanguage.EN) 
+                            "Intelligent natural voice & text query system" 
+                            else "স্টকের নিখুঁত হিস্যা কথা বলে বা লিখে জানুন",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),

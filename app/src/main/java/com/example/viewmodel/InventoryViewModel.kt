@@ -30,7 +30,8 @@ data class GroupedProduct(
     val lotCount: Int,
     val lowStockThreshold: Double,
     val lots: List<ProductEntity>,
-    val code: String = lots.firstOrNull()?.code ?: ""
+    val code: String = lots.firstOrNull()?.code ?: "",
+    val packageType: String = lots.firstOrNull()?.packageType ?: "Bag"
 ) {
     val isLowStock: Boolean
         get() = totalStock <= lowStockThreshold
@@ -69,6 +70,7 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
     val purchases = repository.allPurchases
     val suppliers = repository.allSuppliers
     val transfers = repository.allTransfers
+    val recipeIssues = repository.allRecipeIssues
 
     // UI State Holders
     var appLanguage = mutableStateOf(AppLanguage.EN)
@@ -115,7 +117,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 totalStock = lots.sumOf { it.currentStock },
                 lotCount = lots.size,
                 lowStockThreshold = firstLot.lowStockThreshold,
-                lots = lots
+                lots = lots,
+                packageType = firstLot.packageType
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -154,7 +157,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 currency = "BDT",
                 iconName = "color_bag",
                 entryDate = "2026-05-10",
-                expiryDate = "2029-05-10"
+                expiryDate = "2029-05-10",
+                packageType = "Bag"
             ),
             ProductEntity(
                 name = "Reactive Red HE3B",
@@ -175,7 +179,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 currency = "BDT",
                 iconName = "color_bag",
                 entryDate = "2026-05-15",
-                expiryDate = "2029-05-15"
+                expiryDate = "2029-05-15",
+                packageType = "Bag"
             ),
             ProductEntity(
                 name = "Reactive Red HE3B",
@@ -196,7 +201,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 currency = "BDT",
                 iconName = "color_bag",
                 entryDate = "2026-06-01",
-                expiryDate = "2029-06-01"
+                expiryDate = "2029-06-01",
+                packageType = "Bag"
             ),
             // Disperse Blue SE2R (Dye)
             ProductEntity(
@@ -218,7 +224,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 currency = "USD",
                 iconName = "dye_packet",
                 entryDate = "2026-05-18",
-                expiryDate = "2029-05-18"
+                expiryDate = "2029-05-18",
+                packageType = "Bag"
             ),
             // Glacial Acetic Acid 99% (Chemical) - 2 Lots
             ProductEntity(
@@ -240,7 +247,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 currency = "USD",
                 iconName = "bottle",
                 entryDate = "2026-06-01",
-                expiryDate = "2029-06-01"
+                expiryDate = "2029-06-01",
+                packageType = "Bottle"
             ),
             ProductEntity(
                 name = "Glacial Acetic Acid 99%",
@@ -261,7 +269,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 currency = "USD",
                 iconName = "bottle",
                 entryDate = "2026-06-02",
-                expiryDate = "2029-06-02"
+                expiryDate = "2029-06-02",
+                packageType = "Bottle"
             ),
             // Sodium Hydrosulfite 85% (Chemical) - 2 Lots
             ProductEntity(
@@ -283,7 +292,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 currency = "BDT",
                 iconName = "drum",
                 entryDate = "2026-04-10",
-                expiryDate = "2028-04-10"
+                expiryDate = "2028-04-10",
+                packageType = "Drum"
             ),
             ProductEntity(
                 name = "Sodium Hydrosulfite 85%",
@@ -304,7 +314,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 currency = "BDT",
                 iconName = "drum",
                 entryDate = "2026-05-01",
-                expiryDate = "2028-05-01"
+                expiryDate = "2028-05-01",
+                packageType = "Drum"
             ),
             // Caustic Soda Flakes (Chemical)
             ProductEntity(
@@ -316,7 +327,7 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 batchNumber = "BATCH-77",
                 rackNumber = "Rack B-04",
                 warehouseLocation = "Chemical Warehouse B",
-                unit = "Bag",
+                unit = "KG",
                 openingStock = 500.0,
                 stockIn = 0.0,
                 stockOut = 0.0,
@@ -326,7 +337,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 currency = "BDT",
                 iconName = "powder_bag",
                 entryDate = "2026-05-12",
-                expiryDate = "2029-05-12"
+                expiryDate = "2029-05-12",
+                packageType = "Bag"
             ),
             // Hydrogen Peroxide 50%
             ProductEntity(
@@ -338,7 +350,7 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 batchNumber = "BATCH-11",
                 rackNumber = "Rack C-03",
                 warehouseLocation = "Liquid Drum Yard",
-                unit = "Drum",
+                unit = "KG",
                 openingStock = 15.0,
                 stockIn = 0.0,
                 stockOut = 0.0,
@@ -348,7 +360,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 currency = "BDT",
                 iconName = "drum",
                 entryDate = "2026-05-20",
-                expiryDate = "2028-05-20"
+                expiryDate = "2028-05-20",
+                packageType = "Drum"
             )
         )
 
@@ -454,6 +467,7 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
         purchasePrice: Double,
         currency: String,
         iconName: String,
+        packageType: String = "Bag",
         onComplete: () -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -481,7 +495,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 currency = currency,
                 iconName = iconName,
                 entryDate = dateStr,
-                expiryDate = expStr
+                expiryDate = expStr,
+                packageType = packageType
             )
             repository.insertProduct(newProduct)
             
@@ -726,6 +741,79 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun saveRecipeIssue(
+        items: List<Pair<ProductEntity, Double>>,
+        onComplete: (String) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val todayStr = sdf.format(Date())
+            val calendar = Calendar.getInstance()
+            val year = calendar.get(Calendar.YEAR)
+            
+            val count = repository.getRecipeIssuesCount()
+            val nextIndex = count + 1
+            // Formatted as RI-YYYY-XXX
+            val issueId = "RI-$year-${String.format("%03d", nextIndex)}"
+            
+            // Build items summary
+            val summaryBuilder = StringBuilder()
+            for (i in items.indices) {
+                val item = items[i]
+                val lot = item.first
+                val qty = item.second
+                summaryBuilder.append("${lot.name}\n${qty} ${lot.unit}")
+                if (i < items.size - 1) {
+                    summaryBuilder.append("\n\n")
+                }
+            }
+            
+            // 1. Save issue transaction
+            val entity = RecipeIssueEntity(
+                recipeIssueId = issueId,
+                date = todayStr,
+                itemsSummary = summaryBuilder.toString()
+            )
+            repository.insertRecipeIssue(entity)
+            
+            // 2. Reduce stock from the database for each item
+            for (item in items) {
+                val lot = item.first
+                val qty = item.second
+                val updatedOut = lot.stockOut + qty
+                val updatedStock = lot.openingStock + lot.stockIn - updatedOut
+                val updatedLot = lot.copy(stockOut = updatedOut, currentStock = updatedStock)
+                
+                // Save updated lot
+                repository.insertProduct(updatedLot)
+                
+                // Also log it in standard consumption table so existing charts keep working!
+                val consumption = ConsumptionEntity(
+                    productId = lot.id,
+                    productName = "${lot.name} (Lot ${lot.lotNumber})",
+                    date = todayStr,
+                    quantityUsed = qty,
+                    department = "Production Store",
+                    operator = "Recipe Issue System",
+                    notes = "Recipe Issue: $issueId"
+                )
+                database.inventoryDao().insertConsumption(consumption)
+            }
+            
+            withContext(Dispatchers.Main) {
+                appNotifications.add(
+                    AppNotification(
+                        title = "Recipe Issued Successfully",
+                        body = "Stock reduced for recipe issue $issueId",
+                        type = NotificationType.SUCCESS,
+                        timestamp = java.lang.System.currentTimeMillis()
+                    )
+                )
+                onComplete(issueId)
+            }
+        }
+    }
+
     // --- SMART CAMERA OCR / RECIPE MULTI-VALUE SCAN INTERPRETER ---
     fun simulateLabelScan(rawOcrText: String) {
         scanModeActive.value = true
@@ -855,6 +943,50 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 )
                 recipeProposals.clear()
                 onComplete()
+            }
+        }
+    }
+
+    fun recordOcrConsumptionList(
+        proposals: List<RecipeConsumptionProposal>,
+        department: String = "Coloring Section",
+        operator: String = "OCR Automated Dispensation",
+        notes: String = "Automated recipe image scan stockout",
+        onComplete: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            val dateStr = sdf.format(java.util.Date())
+
+            for (prop in proposals) {
+                val lot = prop.proposedLot ?: continue
+                val updatedOut = lot.stockOut + prop.quantityToConsume
+                val updatedStock = lot.openingStock + lot.stockIn - updatedOut
+                val updatedLot = lot.copy(stockOut = updatedOut, currentStock = updatedStock)
+
+                val consumption = ConsumptionEntity(
+                    productId = lot.id,
+                    productName = "${lot.name} (Lot ${lot.lotNumber})",
+                    date = dateStr,
+                    quantityUsed = prop.quantityToConsume,
+                    department = department,
+                    operator = operator,
+                    notes = notes
+                )
+                repository.insertProduct(updatedLot)
+                database.inventoryDao().insertConsumption(consumption)
+            }
+
+            withContext(Dispatchers.Main) {
+                appNotifications.add(
+                    AppNotification(
+                        title = "OCR Recipe Confirmed",
+                        body = "Processed stock reduction for ${proposals.size} recipe chemicals.",
+                        type = NotificationType.SUCCESS,
+                        timestamp = System.currentTimeMillis()
+                    )
+                )
+                onComplete(true)
             }
         }
     }
@@ -1011,6 +1143,162 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                 onComplete("Restore completed successfully! All lots and transfers rebuilt.")
             }
         }
+    }
+
+    // --- AI ASSISTANT MODULE ---
+    var aiInputText = mutableStateOf("")
+    var aiResponseText = mutableStateOf("")
+    var isAiProcessing = mutableStateOf(false)
+
+    fun executeAiAssistantQuery(userInput: String) {
+        if (userInput.trim().isEmpty()) return
+        
+        aiInputText.value = userInput
+        isAiProcessing.value = true
+        aiResponseText.value = ""
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val localProducts = database.inventoryDao().getAllProducts().first()
+            val localConsumptions = database.inventoryDao().getAllConsumptions().first()
+            
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            val todayStr = sdf.format(java.util.Date())
+
+            // 1. Try local exact database match for standard requested queries
+            val localResponse = getLocalMatchResponse(userInput, localProducts, localConsumptions, todayStr)
+            
+            val finalReply = if (localResponse != null) {
+                localResponse
+            } else {
+                // 2. Call cloud Gemini LLM service with rich contextual databases fed inside
+                val contextBuilder = StringBuilder()
+                contextBuilder.append("Current Date: $todayStr\n\nProducts in Inventory:\n")
+                localProducts.forEach {
+                    contextBuilder.append("- Name: ${it.name}, Code: ${it.code}, Stock: ${it.currentStock} ${it.unit}, Lot: ${it.lotNumber}, Rack: ${it.rackNumber}, Warehouse Location: ${it.warehouseLocation}, Threshold: ${it.lowStockThreshold} ${it.unit}\n")
+                }
+                contextBuilder.append("\nToday's Consumptions / Stock Outs:\n")
+                val todayConsumptions = localConsumptions.filter { it.date == todayStr || it.date.startsWith(todayStr) }
+                if (todayConsumptions.isEmpty()) {
+                    contextBuilder.append("No material consumptions registered today yet.\n")
+                } else {
+                    todayConsumptions.forEach {
+                        contextBuilder.append("- Product: ${it.productName}, Quantity Dispatched: ${it.quantityUsed} kg, Department: ${it.department}, Operator: ${it.operator}\n")
+                    }
+                }
+                
+                geminiService.getSmartAIResponse(userInput, contextBuilder.toString())
+            }
+
+            withContext(Dispatchers.Main) {
+                aiResponseText.value = finalReply
+                isAiProcessing.value = false
+            }
+        }
+    }
+
+    private fun getLocalMatchResponse(
+        userInput: String, 
+        products: List<ProductEntity>, 
+        consumptions: List<ConsumptionEntity>,
+        todayStr: String
+    ): String? {
+        val clean = userInput.trim().lowercase()
+        
+        // 1. "Hydrogen Peroxide কত আছে?"
+        if (clean.contains("hydrogen peroxide") || clean.contains("হাইড্রোজেন পারক্সাইড") || clean.contains("পারক্সাইড কত") || clean.contains("পার অক্সাইড")) {
+            val hpProducts = products.filter { it.name.lowercase().contains("hydrogen peroxide") || it.name.contains("Hydrogen Peroxide") }
+            val totalStock = hpProducts.sumOf { it.currentStock }
+            val unit = hpProducts.firstOrNull()?.unit ?: "KG"
+            val lotDetails = hpProducts.joinToString(", ") { "${it.lotNumber} (${it.currentStock} $unit)" }
+            return if (appLanguage.value == AppLanguage.BN) {
+                "স্টোরে Hydrogen Peroxide এর মোট $totalStock $unit মজুদ আছে। লটভিত্তিক বিবরণ: $lotDetails।"
+            } else {
+                "There is a total of $totalStock $unit of Hydrogen Peroxide in stock across lots: $lotDetails."
+            }
+        }
+        
+        // 2. "HP001 কোথায় আছে?"
+        if (clean.contains("hp001") || (clean.contains("কোথায়") && clean.contains("hp"))) {
+            val hpLot = products.find { it.lotNumber.lowercase().contains("hp001") || it.code.lowercase().contains("hp001") }
+            return if (hpLot != null) {
+                if (appLanguage.value == AppLanguage.BN) {
+                    "লট ${hpLot.lotNumber} (${hpLot.name}) গুদামের র‍্যাক ${hpLot.rackNumber} এ সংরক্ষিত আছে (অবস্থান: ${hpLot.warehouseLocation})। বর্তমানে এর মজুদ পরিমাণ ${hpLot.currentStock} ${hpLot.unit}।"
+                } else {
+                    "Lot ${hpLot.lotNumber} (${hpLot.name}) is stored in Rack ${hpLot.rackNumber} at ${hpLot.warehouseLocation} location. Current stock is ${hpLot.currentStock} ${hpLot.unit}."
+                }
+            } else {
+                val anyLot = products.find { clean.contains(it.lotNumber.lowercase()) || clean.contains(it.code.lowercase()) }
+                if (anyLot != null) {
+                    if (appLanguage.value == AppLanguage.BN) {
+                        "লট ${anyLot.lotNumber} (${anyLot.name}) গুদামের র‍্যাক ${anyLot.rackNumber}-এ সংরক্ষিত আছে।"
+                    } else {
+                        "Lot ${anyLot.lotNumber} (${anyLot.name}) is stored in Rack ${anyLot.rackNumber}."
+                    }
+                } else {
+                    null
+                }
+            }
+        }
+        
+        // 3. "Low Stock দেখাও"
+        if (clean.contains("low stock") || clean.contains("কম স্টক") || clean.contains("স্টক কম") || clean.contains("মজুদ কম")) {
+            val lowItems = products.filter { it.currentStock <= it.lowStockThreshold }
+            return if (lowItems.isNotEmpty()) {
+                val lowDesc = lowItems.joinToString(", ") { "${it.name} [${it.lotNumber}] (${it.currentStock} ${it.unit})" }
+                if (appLanguage.value == AppLanguage.BN) {
+                    "নিম্ন মজুদ সতর্কসীমার নীচে থাকা প্রোডাক্টগুলো হল: $lowDesc। এগুলো রি-অর্ডার করা প্রয়োজন।"
+                } else {
+                    "The following low-stock products require reordering: $lowDesc."
+                }
+            } else {
+                if (appLanguage.value == AppLanguage.BN) {
+                    "ধন্যবাদ। গুদামের সকল কেমিকাল এবং ডাইস পর্যাপ্ত মজুদ সীমায় রয়েছে।"
+                } else {
+                    "Great news! All chemicals and dyestuffs are currently above their low stock safety levels."
+                }
+            }
+        }
+        
+        // 4. "Rack A-01 এ কী আছে?"
+        if (clean.contains("rack a-01") || clean.contains("র‍্যাক a-01") || clean.contains("a-01")) {
+            val rackProducts = products.filter { it.rackNumber.lowercase().contains("a-01") || it.rackNumber.lowercase() == "a-01" }
+            return if (rackProducts.isNotEmpty()) {
+                val rackDesc = rackProducts.joinToString(", ") { "${it.name} [লট ${it.lotNumber}] (${it.currentStock} ${it.unit})" }
+                if (appLanguage.value == AppLanguage.BN) {
+                    "র‍্যাক A-01 এ সংরক্ষিত পণ্যগুলো হল: $rackDesc।"
+                } else {
+                    "Rack A-01 contains the following items: $rackDesc."
+                }
+            } else {
+                if (appLanguage.value == AppLanguage.BN) {
+                    "র‍্যাক A-01 এ বর্তমানে কোনো পণ্য সংরক্ষিত নেই।"
+                } else {
+                    "Rack A-01 is currently empty or has no products assigned."
+                }
+            }
+        }
+        
+        // 5. "আজকে কত Stock Out হয়েছে?"
+        if (clean.contains("stock out") || clean.contains("আজকে কত") || clean.contains("আজ কত") || clean.contains("ডিলেভারি") || clean.contains("ডিলভারি") || clean.contains("ব্যবহার")) {
+            val todayConsumptions = consumptions.filter { it.date == todayStr || it.date.startsWith(todayStr) }
+            val totalDispatched = todayConsumptions.sumOf { it.quantityUsed }
+            return if (todayConsumptions.isNotEmpty()) {
+                val consDesc = todayConsumptions.joinToString(", ") { "${it.productName} (${it.quantityUsed} KG)" }
+                if (appLanguage.value == AppLanguage.BN) {
+                    "আজকে সাকুল্যে মোট $totalDispatched KG কাঁচামাল স্টক আউট (ডেসপ্যাচ) হয়েছে। পণ্যভিত্তিক বিবরণ: $consDesc।"
+                } else {
+                    "Daily total stock out today is $totalDispatched units. List of consumptions: $consDesc."
+                }
+            } else {
+                if (appLanguage.value == AppLanguage.BN) {
+                    "আজকের দিনে গুদাম থেকে এখনও কোনো কাঁচামাল স্টক আউট বা ব্যবহার করা হয়নি।"
+                } else {
+                    "No inventory dispatch or stock out logs have been recorded yet today."
+                }
+            }
+        }
+        
+        return null
     }
 }
 

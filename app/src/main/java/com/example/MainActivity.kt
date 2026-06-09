@@ -10,8 +10,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.MainAppLayout
+import com.example.ui.SplashScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.InventoryViewModel
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,18 +21,30 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             // Keep track of dark mode in dynamic state
-            var isDarkThemeByDefault = isSystemInDarkTheme()
+            val isDarkThemeByDefault = isSystemInDarkTheme()
             var darkModeState by remember { mutableStateOf(isDarkThemeByDefault) }
 
             MyApplicationTheme(darkTheme = darkModeState) {
-                // Compose ViewModel provider
-                val inventoryViewModel: InventoryViewModel = viewModel()
+                // Splash screen display state
+                var showSplashScreen by remember { mutableStateOf(true) }
 
-                MainAppLayout(
-                    viewModel = inventoryViewModel,
-                    darkMode = darkModeState,
-                    onToggleDarkMode = { darkModeState = !darkModeState }
-                )
+                LaunchedEffect(Unit) {
+                    delay(3000)
+                    showSplashScreen = false
+                }
+
+                if (showSplashScreen) {
+                    SplashScreen()
+                } else {
+                    // Compose ViewModel provider
+                    val inventoryViewModel: InventoryViewModel = viewModel()
+
+                    MainAppLayout(
+                        viewModel = inventoryViewModel,
+                        darkMode = darkModeState,
+                        onToggleDarkMode = { darkModeState = !darkModeState }
+                    )
+                }
             }
         }
     }
