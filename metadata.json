@@ -1,6 +1,6 @@
 {
-  "name": "DyeChem Smart Inventory",
-  "description": "AI-Powered Dye & Chemical Inventory Management System for textile and industrial stores",
+  "name": "DyeChem Smart Inventory Pro",
+  "description": "Industrial Dyeing Factory Inventory Management System",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

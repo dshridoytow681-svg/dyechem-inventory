@@ -4,47 +4,27 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.ui.MainAppLayout
-import com.example.ui.SplashScreen
+import com.example.ui.screens.AppShell
 import com.example.ui.theme.MyApplicationTheme
-import com.example.viewmodel.InventoryViewModel
-import kotlinx.coroutines.delay
+import com.example.ui.viewmodel.InventoryViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Simply instantiate the unified ViewModel using the Android context application
+        val viewModel = InventoryViewModel(application)
+
         setContent {
-            // Keep track of dark mode in dynamic state
-            val isDarkThemeByDefault = isSystemInDarkTheme()
-            var darkModeState by remember { mutableStateOf(isDarkThemeByDefault) }
+            val isDarkMode by viewModel.isDarkMode.collectAsState()
 
-            MyApplicationTheme(darkTheme = darkModeState) {
-                // Splash screen display state
-                var showSplashScreen by remember { mutableStateOf(true) }
-
-                LaunchedEffect(Unit) {
-                    delay(3000)
-                    showSplashScreen = false
-                }
-
-                if (showSplashScreen) {
-                    SplashScreen()
-                } else {
-                    // Compose ViewModel provider
-                    val inventoryViewModel: InventoryViewModel = viewModel()
-
-                    MainAppLayout(
-                        viewModel = inventoryViewModel,
-                        darkMode = darkModeState,
-                        onToggleDarkMode = { darkModeState = !darkModeState }
-                    )
-                }
+            MyApplicationTheme(darkTheme = isDarkMode) {
+                AppShell(viewModel = viewModel, modifier = Modifier.fillMaxSize())
             }
         }
     }
