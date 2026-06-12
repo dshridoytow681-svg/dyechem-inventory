@@ -24,3 +24,10 @@ val DyeBlack = Color(0xFF191919)
 val LowStockAlertColor = Color(0xFFFF4C00)
 val SafeGreen = Color(0xFF2ECC71)
 val GrayBorder = Color(0xFF4A4E69)
+
+// Legacy color aliases
+val ColorGreen = Color(0xFF2ECC71)
+val ColorRed = Color(0xFFE84545)
+val ColorOrange = Color(0xFFFF6B35)
+val ColorBlueAccent = Color(0xFF3282B8)
+val DarkPrimary = Color(0xFF00ADB5)
