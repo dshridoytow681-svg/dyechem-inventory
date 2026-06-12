@@ -30,7 +30,8 @@ enum class AppScreen {
     Analytics,
     SupplierModule,
     PurchaseLog,
-    LowStockAlerts
+    LowStockAlerts,
+    Report
 }
 
 enum class UserRole {
@@ -51,6 +52,8 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
     val currentRole = MutableStateFlow(UserRole.Admin) // Starts as Admin for testing complete access
     val currentScreen = MutableStateFlow(AppScreen.Splash)
     val selectedProduct = MutableStateFlow<Product?>(null)
+    val productListFilter = MutableStateFlow("All Products")
+    val productSubTab = MutableStateFlow(0)
 
     // DB Driven Flow States
     val products = repository.allProducts.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -319,12 +322,15 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
         lowLimit: Double,
         unit: String,
         packagingType: String,
-        dyeColor: String
+        dyeColor: String,
+        initialLotNum: String = "LOT001",
+        initialQty: Double = 0.0,
+        initialPrice: Double = 0.0
     ) {
         viewModelScope.launch {
             if (id == 0L) {
                 // Insert new product
-                repository.insertProduct(
+                val newProdId = repository.insertProduct(
                     Product(
                         name = name,
                         category = category,
@@ -335,6 +341,47 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
                         dyeColor = dyeColor
                     )
                 )
+
+                // Handled registering new product with initial stock amount option if specified
+                if (initialQty > 0.0) {
+                    val actualLotNum = initialLotNum.ifBlank { "LOT001" }
+                    // Create corresponding Lot
+                    repository.insertLot(
+                        Lot(
+                            productId = newProdId,
+                            lotNumber = actualLotNum,
+                            quantity = initialQty,
+                            initialQuantity = initialQty
+                        )
+                    )
+                    // Logs stock movement IN
+                    repository.insertStockMovement(
+                        StockMovement(
+                            productId = newProdId,
+                            productName = name,
+                            lotNumber = actualLotNum,
+                            type = "IN",
+                            quantity = initialQty,
+                            remarks = "New product initial registered amount"
+                        )
+                    )
+
+                    // Logs initial purchase receipt if price is documented
+                    if (initialPrice > 0.0) {
+                        repository.insertPurchase(
+                            Purchase(
+                                supplierName = "Initial Entry",
+                                invoiceNumber = "SEED-$newProdId",
+                                purchaseDate = System.currentTimeMillis(),
+                                productName = name,
+                                lotNumber = actualLotNum,
+                                quantity = initialQty,
+                                price = initialPrice,
+                                currency = "BDT"
+                            )
+                        )
+                    }
+                }
             } else {
                 // Update
                 val existing = repository.getProductById(id)
@@ -357,6 +404,50 @@ class InventoryViewModel(application: Application) : AndroidViewModel(applicatio
     fun deleteProduct(product: Product) {
         viewModelScope.launch {
             repository.deleteProduct(product)
+        }
+    }
+
+    // --- Edit & Delete Logs History Support ---
+    fun deleteStockMovement(movement: StockMovement) {
+        viewModelScope.launch {
+            val allLots = repository.getLotsForProductSync(movement.productId)
+            val matchingLot = allLots.find { it.lotNumber.equals(movement.lotNumber, ignoreCase = true) }
+            if (matchingLot != null) {
+                val newQty = if (movement.type.equals("IN", ignoreCase = true)) {
+                    maxOf(0.0, matchingLot.quantity - movement.quantity)
+                } else {
+                    matchingLot.quantity + movement.quantity
+                }
+                repository.updateLot(matchingLot.copy(quantity = newQty))
+            }
+            repository.deleteStockMovement(movement)
+        }
+    }
+
+    fun updateStockMovement(movement: StockMovement, newQty: Double, newRemarks: String, newLotNo: String = movement.lotNumber) {
+        viewModelScope.launch {
+            val diff = newQty - movement.quantity
+            val allLots = repository.getLotsForProductSync(movement.productId)
+            val matchingLot = allLots.find { it.lotNumber.equals(movement.lotNumber, ignoreCase = true) }
+            
+            if (matchingLot != null) {
+                val qtyAdjustment = if (movement.type.equals("IN", ignoreCase = true)) diff else -diff
+                val newQtyLot = maxOf(0.0, matchingLot.quantity + qtyAdjustment)
+                repository.updateLot(
+                    matchingLot.copy(
+                        lotNumber = newLotNo,
+                        quantity = newQtyLot,
+                        initialQuantity = if (movement.type.equals("IN", ignoreCase = true)) maxOf(0.0, matchingLot.initialQuantity + diff) else matchingLot.initialQuantity
+                    )
+                )
+            }
+            
+            val updatedMovement = movement.copy(
+                quantity = newQty,
+                remarks = newRemarks,
+                lotNumber = newLotNo
+            )
+            repository.updateStockMovement(updatedMovement)
         }
     }
 

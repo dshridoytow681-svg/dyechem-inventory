@@ -51,114 +51,148 @@ fun AppShell(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    if (currentScreen != AppScreen.Dashboard && currentScreen != AppScreen.Splash) {
-                        IconButton(onClick = { viewModel.navigateBack() }) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back"
-                            )
-                        }
-                    }
-                },
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        DyeChemLogo(modifier = Modifier.size(36.dp))
-                        Column {
-                            Text(
-                                "DyeChem Pro",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                            Text(
-                                when (currentScreen) {
-                                    AppScreen.Dashboard -> "Dashboard"
-                                    AppScreen.ProductList -> "Inventory List"
-                                    AppScreen.ProductDetails -> "Lot Matrix"
-                                    AppScreen.AddEditProduct -> "Product Register"
-                                    AppScreen.RackManagement -> "Rack Monitor"
-                                    AppScreen.RecipeIssue -> "Recipe Dispensation"
-                                    AppScreen.Scanner -> "Vision Scanner"
-                                    AppScreen.VoiceAssistant -> "AI Voice Bot"
-                                    AppScreen.Analytics -> "Factory Analytics"
-                                    AppScreen.SupplierModule -> "Suppliers Directory"
-                                    AppScreen.PurchaseLog -> "Invoices Log"
-                                    AppScreen.LowStockAlerts -> "Inventory Alerts"
-                                    else -> "Smart Inventory"
-                                },
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    // Quick Role Switch Badge (Essential for verification & grading)
-                    Box {
-                        Surface(
-                            onClick = { showRoleMenu = true },
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                gap = 4,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(14.dp))
-                                Text(
-                                    currentRole.name,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(14.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = if (isDarkMode) {
+                                listOf(Color(0xFF0F3057), Color(0xFF00587A))
+                            } else {
+                                listOf(Color(0xFF0D7C71), Color(0xFF074D45))
                             }
-                        }
-                        
-                        DropdownMenu(
-                            expanded = showRoleMenu,
-                            onDismissRequest = { showRoleMenu = false }
-                        ) {
-                            UserRole.values().forEach { role ->
-                                DropdownMenuItem(
-                                    text = { Text(role.name) },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = when(role) {
-                                                UserRole.Admin -> Icons.Default.AdminPanelSettings
-                                                UserRole.Manager -> Icons.Default.SupervisorAccount
-                                                UserRole.StoreKeeper -> Icons.Default.Inventory
-                                                UserRole.Viewer -> Icons.Default.Visibility
-                                            },
-                                            contentDescription = null
-                                        )
-                                    },
-                                    onClick = {
-                                        viewModel.currentRole.value = role
-                                        showRoleMenu = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    // Dark Mode Toggle
-                    IconButton(onClick = { viewModel.isDarkMode.value = !isDarkMode }) {
-                        Icon(
-                            imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = "Toggle Theme"
                         )
+                    )
+            ) {
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White,
+                        actionIconContentColor = Color.White
+                    ),
+                    navigationIcon = {
+                        if (currentScreen != AppScreen.Dashboard && currentScreen != AppScreen.Splash) {
+                            IconButton(onClick = { viewModel.navigateBack() }) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    },
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            DyeChemLogo(modifier = Modifier.size(36.dp))
+                            Column {
+                                Text(
+                                    "DyeChem Pro",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = Color.White
+                                )
+                                Text(
+                                    when (currentScreen) {
+                                        AppScreen.Dashboard -> "Dashboard"
+                                        AppScreen.ProductList -> "Inventory List"
+                                        AppScreen.ProductDetails -> "Lot Matrix"
+                                        AppScreen.AddEditProduct -> "Product Register"
+                                        AppScreen.RackManagement -> "Rack Monitor"
+                                        AppScreen.RecipeIssue -> "Recipe Dispensation"
+                                        AppScreen.Scanner -> "Vision Scanner"
+                                        AppScreen.VoiceAssistant -> "AI Voice Bot"
+                                        AppScreen.Analytics -> "Factory Analytics"
+                                        AppScreen.SupplierModule -> "Suppliers Directory"
+                                        AppScreen.PurchaseLog -> "Invoices Log"
+                                        AppScreen.LowStockAlerts -> "Inventory Alerts"
+                                        AppScreen.Report -> "Log analytics & Reports"
+                                        else -> "Smart Inventory"
+                                    },
+                                    fontSize = 11.sp,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    },
+                    actions = {
+                        // Quick Role Switch Badge (Essential for verification & grading)
+                        Box {
+                            Surface(
+                                onClick = { showRoleMenu = true },
+                                color = Color.White.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    gap = 4,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        currentRole.name,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Icon(
+                                        Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                            
+                            DropdownMenu(
+                                expanded = showRoleMenu,
+                                onDismissRequest = { showRoleMenu = false }
+                            ) {
+                                UserRole.values().forEach { role ->
+                                    DropdownMenuItem(
+                                        text = { Text(role.name) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = when(role) {
+                                                    UserRole.Admin -> Icons.Default.AdminPanelSettings
+                                                    UserRole.Manager -> Icons.Default.SupervisorAccount
+                                                    UserRole.StoreKeeper -> Icons.Default.Inventory
+                                                    UserRole.Viewer -> Icons.Default.Visibility
+                                                },
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            viewModel.currentRole.value = role
+                                            showRoleMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // Dark Mode Toggle
+                        IconButton(onClick = { viewModel.isDarkMode.value = !isDarkMode }) {
+                            Icon(
+                                imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                contentDescription = "Toggle Theme",
+                                tint = Color.White
+                            )
+                        }
                     }
-                }
-            )
+                )
+            }
         },
         bottomBar = {
             NavigationBar {
@@ -179,6 +213,12 @@ fun AppShell(
                     onClick = { viewModel.navigateTo(AppScreen.RecipeIssue) },
                     icon = { Icon(Icons.Default.ReceiptLong, contentDescription = "Recipe") },
                     label = { Text("Issue", fontSize = 10.sp) }
+                )
+                NavigationBarItem(
+                    selected = currentScreen == AppScreen.Report,
+                    onClick = { viewModel.navigateTo(AppScreen.Report) },
+                    icon = { Icon(Icons.Default.Assignment, contentDescription = "Reports") },
+                    label = { Text("Reports", fontSize = 10.sp) }
                 )
                 NavigationBarItem(
                     selected = currentScreen == AppScreen.VoiceAssistant,
@@ -219,6 +259,7 @@ fun AppShell(
                     AppScreen.SupplierModule -> SupplierPurchasesScreen(viewModel, initialTab = 0)
                     AppScreen.PurchaseLog -> SupplierPurchasesScreen(viewModel, initialTab = 1)
                     AppScreen.LowStockAlerts -> LowStockScreen(viewModel)
+                    AppScreen.Report -> ReportScreen(viewModel)
                     else -> DashboardScreen(viewModel)
                 }
             }

@@ -71,4 +71,10 @@ interface InventoryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStockMovement(movement: StockMovement): Long
+
+    @Update
+    suspend fun updateStockMovement(movement: StockMovement)
+
+    @Delete
+    suspend fun deleteStockMovement(movement: StockMovement)
 }

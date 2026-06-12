@@ -3,9 +3,12 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -42,52 +45,42 @@ fun DashboardScreen(
     val dyeCount = productsList.count { it.category.equals("Dyes", ignoreCase = true) }
     val rackCount = productsList.map { it.rackNumber }.distinct().count()
 
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
-        // Welcoming Card
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Welcome to DyeChem Smart Pro",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    text = "Logistics Mode: ${currentRole.name} | Factory Connection: Active & Enforced",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                )
-            }
-        }
-
         // Live Inventory Statistics Grid
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             StatsCompactCard(
-                title = "Chemicals",
-                value = chemCount.toString(),
+                title = "Chemical Items",
+                value = "$chemCount Products",
                 icon = Icons.Default.Science,
-                color = MaterialTheme.colorScheme.primary,
+                color = Color(0xFFFF9F43), // Vivid Orange matching chemical flask
+                onClick = {
+                    viewModel.productListFilter.value = "Chemical Products"
+                    viewModel.productSubTab.value = 0
+                    viewModel.navigateTo(AppScreen.ProductList)
+                },
                 modifier = Modifier.weight(1f)
             )
             StatsCompactCard(
-                title = "Dyes",
-                value = dyeCount.toString(),
+                title = "Dye Items",
+                value = "$dyeCount Products",
                 icon = Icons.Default.Palette,
-                color = Color(0xFFFF9F43),
+                color = Color(0xFF2ECC71), // Vivid Teal/Green matching palette
+                onClick = {
+                    viewModel.productListFilter.value = "Dye Products"
+                    viewModel.productSubTab.value = 0
+                    viewModel.navigateTo(AppScreen.ProductList)
+                },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -99,118 +92,52 @@ fun DashboardScreen(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             StatsCompactCard(
-                title = "Racks active",
-                value = rackCount.toString(),
+                title = "Active Locations",
+                value = "$rackCount Racks",
                 icon = Icons.Default.Layers,
-                color = Color(0xFF2ECC71),
+                color = Color(0xFF3498DB), // Vivid Slate Blue
+                onClick = {
+                    viewModel.navigateTo(AppScreen.RackManagement)
+                },
                 modifier = Modifier.weight(1f)
             )
-            // Low Stock alert badge card
-            Box(modifier = Modifier.weight(1f)) {
-                StatsCompactCard(
-                    title = "Low Stock Limit",
-                    value = lowStockCount.toString(),
-                    icon = Icons.Default.Warning,
-                    color = if (lowStockCount > 0) Color(0xFFFF4C00) else Color.Gray,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { viewModel.navigateTo(AppScreen.LowStockAlerts) }
-                )
-                if (lowStockCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .background(Color.Red, RoundedCornerShape(10.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            "ALERT",
-                            color = Color.White,
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Text(
-            text = "LIVE STOCK FEED (CLICKABLE)",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 6.dp)
-        )
-
-        // Scrollable Row of clickable stock status cards!
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(productsList) { product ->
-                val prodLots = lotsList.filter { it.productId == product.id }
-                val totalQty = prodLots.sumOf { it.quantity }
-                val isLow = totalQty < product.lowStockLimit
-                
-                Card(
-                    onClick = {
-                        viewModel.selectedProduct.value = product
-                        viewModel.navigateTo(AppScreen.ProductDetails)
-                    },
-                    modifier = Modifier
-                        .width(170.dp)
-                        .border(
-                            1.dp,
-                            if (isLow) Color(0xFFFF4C00).copy(alpha = 0.4f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                            RoundedCornerShape(10.dp)
-                        ),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isLow) Color(0xFFFF4C00).copy(alpha = 0.05f) else MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
+            
+            StatsCompactCard(
+                title = "Low Stock Items",
+                value = "$lowStockCount Alerts",
+                icon = Icons.Default.Warning,
+                color = if (lowStockCount > 0) Color(0xFFE74C3C) else Color.Gray,
+                onClick = {
+                    viewModel.navigateTo(AppScreen.LowStockAlerts)
+                },
+                trailing = {
+                    if (lowStockCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color.Red, RoundedCornerShape(10.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = product.name,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Icon(
-                                imageVector = if (isLow) Icons.Default.Warning else Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = if (isLow) Color(0xFFFF4C00) else Color(0xFF2ECC71),
-                                modifier = Modifier.size(13.dp)
+                                "ALERT",
+                                color = Color.White,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "${totalQty} ${product.unit}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Rack: ${product.rackNumber}",
-                            fontSize = 9.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.ArrowForward,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-                }
-            }
+                },
+                modifier = Modifier.weight(1f)
+            )
         }
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = "FACTORY DEPARTMENTS",
@@ -220,72 +147,85 @@ fun DashboardScreen(
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        // Action grid buttons
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        // Action grid buttons - dynamic column scroll layout with nested scroll safety
+        Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxWidth()
         ) {
-            item {
-                ActionMenuCard(
-                    title = "Recipe Issue",
-                    subtitle = "Formulation dispensation",
-                    icon = Icons.Default.ReceiptLong,
-                    color = MaterialTheme.colorScheme.primary,
-                    testTag = "recipe_issue_card",
-                    onClick = { viewModel.navigateTo(AppScreen.RecipeIssue) }
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    ActionMenuCard(
+                        title = "Recipe Issue",
+                        subtitle = "Formulation dispensation",
+                        icon = Icons.Default.ReceiptLong,
+                        color = MaterialTheme.colorScheme.primary,
+                        testTag = "recipe_issue_card",
+                        onClick = { viewModel.navigateTo(AppScreen.RecipeIssue) }
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ActionMenuCard(
+                        title = "Vision Scanner",
+                        subtitle = "OCR label & recipe scan",
+                        icon = Icons.Default.QrCodeScanner,
+                        color = Color(0xFF4DB6AC),
+                        testTag = "vision_scanner_card",
+                        onClick = { viewModel.navigateTo(AppScreen.Scanner) }
+                    )
+                }
             }
-            item {
-                ActionMenuCard(
-                    title = "Vision Scanner",
-                    subtitle = "OCR label & recipe scan",
-                    icon = Icons.Default.QrCodeScanner,
-                    color = Color(0xFF4DB6AC),
-                    testTag = "vision_scanner_card",
-                    onClick = { viewModel.navigateTo(AppScreen.Scanner) }
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    ActionMenuCard(
+                        title = "AI Assistant",
+                        subtitle = "Gemini stock queries",
+                        icon = Icons.Default.Psychology,
+                        color = Color(0xFF9575CD),
+                        testTag = "ai_assistant_card",
+                        onClick = { viewModel.navigateTo(AppScreen.VoiceAssistant) }
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ActionMenuCard(
+                        title = "Analytics",
+                        subtitle = "Daily / Monthly charts",
+                        icon = Icons.Default.InsertChartOutlined,
+                        color = Color(0xFFE57373),
+                        testTag = "analytics_card",
+                        onClick = { viewModel.navigateTo(AppScreen.Analytics) }
+                    )
+                }
             }
-            item {
-                ActionMenuCard(
-                    title = "AI Assistant",
-                    subtitle = "Gemini stock queries",
-                    icon = Icons.Default.Psychology,
-                    color = Color(0xFF9575CD),
-                    testTag = "ai_assistant_card",
-                    onClick = { viewModel.navigateTo(AppScreen.VoiceAssistant) }
-                )
-            }
-            item {
-                ActionMenuCard(
-                    title = "Analytics",
-                    subtitle = "Daily / Monthly charts",
-                    icon = Icons.Default.InsertChartOutlined,
-                    color = Color(0xFFE57373),
-                    testTag = "analytics_card",
-                    onClick = { viewModel.navigateTo(AppScreen.Analytics) }
-                )
-            }
-            item {
-                ActionMenuCard(
-                    title = "Rack Management",
-                    subtitle = "Location mapping",
-                    icon = Icons.Default.Layers,
-                    color = Color(0xFFF0B27A),
-                    testTag = "rack_manager_card",
-                    onClick = { viewModel.navigateTo(AppScreen.RackManagement) }
-                )
-            }
-            item {
-                ActionMenuCard(
-                    title = "Suppliers Directory",
-                    subtitle = "Partner mobile & info",
-                    icon = Icons.Default.ContactPhone,
-                    color = Color(0xFF4DD0E1),
-                    testTag = "suppliers_card",
-                    onClick = { viewModel.navigateTo(AppScreen.SupplierModule) }
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    ActionMenuCard(
+                        title = "Rack Management",
+                        subtitle = "Location mapping",
+                        icon = Icons.Default.Layers,
+                        color = Color(0xFFF0B27A),
+                        testTag = "rack_manager_card",
+                        onClick = { viewModel.navigateTo(AppScreen.RackManagement) }
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ActionMenuCard(
+                        title = "Suppliers Directory",
+                        subtitle = "Partner mobile & info",
+                        icon = Icons.Default.ContactPhone,
+                        color = Color(0xFF4DD0E1),
+                        testTag = "suppliers_card",
+                        onClick = { viewModel.navigateTo(AppScreen.SupplierModule) }
+                    )
+                }
             }
         }
     }
@@ -297,33 +237,66 @@ fun StatsCompactCard(
     value: String,
     icon: ImageVector,
     color: Color,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailing: @Composable (() -> Unit)? = null
 ) {
     Card(
-        shape = RoundedCornerShape(10.dp),
+        onClick = onClick,
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(10.dp))
+        modifier = modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(24.dp)
+            )
     ) {
         Column(
-            modifier = Modifier.padding(12.dp)
+            modifier = Modifier.padding(18.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
-                Text(
-                    title,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(46.dp)
+                        .background(color.copy(alpha = 0.12f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                if (trailing != null) {
+                    trailing()
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+            )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                value,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
+                text = value,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }

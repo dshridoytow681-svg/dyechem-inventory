@@ -28,6 +28,8 @@ class InventoryRepository(private val dao: InventoryDao) {
 
     fun getLotsForProduct(productId: Long): Flow<List<Lot>> = dao.getLotsForProduct(productId)
 
+    suspend fun getLotsForProductSync(productId: Long): List<Lot> = dao.getLotsForProductSync(productId)
+
     suspend fun insertLot(lot: Lot): Long = dao.insertLot(lot)
 
     suspend fun updateLot(lot: Lot) = dao.updateLot(lot)
@@ -50,6 +52,10 @@ class InventoryRepository(private val dao: InventoryDao) {
     val allStockMovements: Flow<List<StockMovement>> = dao.getAllStockMovements()
 
     suspend fun insertStockMovement(movement: StockMovement): Long = dao.insertStockMovement(movement)
+
+    suspend fun updateStockMovement(movement: StockMovement) = dao.updateStockMovement(movement)
+
+    suspend fun deleteStockMovement(movement: StockMovement) = dao.deleteStockMovement(movement)
 
     // --- FIFO stock movement reduction logic ---
     /**

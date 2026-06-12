@@ -42,9 +42,21 @@ fun ProductListScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val lots by viewModel.lots.collectAsState()
     val currentRole by viewModel.currentRole.collectAsState()
+    val stockMovements by viewModel.stockMovements.collectAsState()
 
-    var activeFilter by remember { mutableStateOf("All Products") }
+    val activeSubTab by viewModel.productSubTab.collectAsState()
+    val activeFilter by viewModel.productListFilter.collectAsState()
     
+    // Edit & Delete Movements states
+    var showLogEditDialog by remember { mutableStateOf(false) }
+    var logToEdit by remember { mutableStateOf<com.example.data.model.StockMovement?>(null) }
+    var editLogQty by remember { mutableStateOf("") }
+    var editLogRemarks by remember { mutableStateOf("") }
+    var editLogLotNo by remember { mutableStateOf("") }
+
+    var showLogDeleteConfirm by remember { mutableStateOf(false) }
+    var logToDelete by remember { mutableStateOf<com.example.data.model.StockMovement?>(null) }
+
     // Quick stock actions dialog builders
     var showQuickInDialog by remember { mutableStateOf(false) }
     var showQuickOutDialog by remember { mutableStateOf(false) }
@@ -78,12 +90,31 @@ fun ProductListScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Tab Header to toggling between Stocks and Transaction Logs
+            TabRow(
+                selectedTabIndex = activeSubTab,
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 10.dp)
+            ) {
+                Tab(
+                    selected = activeSubTab == 0,
+                    onClick = { viewModel.productSubTab.value = 0 },
+                    text = { Text("Stocks Matrix (স্টক তালিকা)", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                )
+                Tab(
+                    selected = activeSubTab == 1,
+                    onClick = { viewModel.productSubTab.value = 1 },
+                    text = { Text("Logs History (লগ হিস্টরি)", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                )
+            }
+
             // Enhanced Search Input with Mic icon & Clear button
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.searchQuery.value = it },
-                label = { Text("Search Name, Lot, Batch, Rack...") },
-                placeholder = { Text("Search Name, Lot, Batch, Rack...") },
+                label = { Text(if (activeSubTab == 0) "Search Name, Lot, Batch, Rack..." else "Search Logs name, lot, note...") },
+                placeholder = { Text(if (activeSubTab == 0) "Search Name, Lot, Batch, Rack..." else "Search Logs name, lot, note...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -105,165 +136,322 @@ fun ProductListScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Horizontally scrollable capsule category filter chips (Scrolling Capsules UI)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                listOf("All Products", "Dye Products", "Chemical Products").forEach { filterText ->
-                    val isActive = activeFilter == filterText
-                    Surface(
-                        onClick = { activeFilter = filterText },
-                        shape = CircleShape,
-                        color = if (isActive) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        },
-                        border = androidx.compose.foundation.BorderStroke(
-                            width = 1.dp,
+            if (activeSubTab == 0) {
+                // Horizontally scrollable capsule category filter chips (Scrolling Capsules UI)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    listOf("All Products", "Dye Products", "Chemical Products").forEach { filterText ->
+                        val isActive = activeFilter == filterText
+                        Surface(
+                            onClick = { viewModel.productListFilter.value = filterText },
+                            shape = CircleShape,
                             color = if (isActive) {
                                 MaterialTheme.colorScheme.primary
                             } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-                            }
-                        ),
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = filterText,
-                            fontSize = 13.sp,
-                            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium,
-                            color = if (isActive) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                             },
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
+                            border = androidx.compose.foundation.BorderStroke(
+                                width = 1.dp,
+                                color = if (isActive) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                                }
+                            ),
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = filterText,
+                                fontSize = 13.sp,
+                                fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium,
+                                color = if (isActive) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-            // Counter & Clickable action buttons Row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Cataloged Stocks (${filteredProducts.size})",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
+                // Counter & Clickable action buttons Row
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // + New Action Button (Blue) (Admin/Manager only)
-                    if (currentRole == UserRole.Admin || currentRole == UserRole.Manager) {
-                        Button(
-                            onClick = {
-                                viewModel.selectedProduct.value = null
-                                viewModel.navigateTo(AppScreen.AddEditProduct)
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                            modifier = Modifier.height(28.dp),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Text("+ New", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    Text(
+                        text = "Cataloged Stocks (${filteredProducts.size})",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
 
-                    // ↑ In Action Button (Green) (Non-viewers only)
-                    if (currentRole != UserRole.Viewer) {
-                        Button(
-                            onClick = {
-                                quickInProduct = filteredProducts.firstOrNull()
-                                quickInLotNum = ""
-                                quickInQty = ""
-                                showQuickInDialog = true
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2ECC71)),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                            modifier = Modifier.height(28.dp),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Text("↑ In", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // + New Action Button (Blue) (Admin/Manager only)
+                        if (currentRole == UserRole.Admin || currentRole == UserRole.Manager) {
+                            Button(
+                                onClick = {
+                                    viewModel.selectedProduct.value = null
+                                    viewModel.navigateTo(AppScreen.AddEditProduct)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.height(28.dp),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text("+ New", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
-                    }
 
-                    // ↓ Out Action Button (Red) (Non-viewers only)
-                    if (currentRole != UserRole.Viewer) {
-                        Button(
-                            onClick = {
-                                quickOutProduct = filteredProducts.firstOrNull()
-                                quickOutQty = ""
-                                quickOutRemarks = ""
-                                showQuickOutDialog = true
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE74C3C)),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                            modifier = Modifier.height(28.dp),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Text("↓ Out", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        // ↑ In Action Button (Green) (Non-viewers only)
+                        if (currentRole != UserRole.Viewer) {
+                            Button(
+                                onClick = {
+                                    quickInProduct = filteredProducts.firstOrNull()
+                                    quickInLotNum = ""
+                                    quickInQty = ""
+                                    showQuickInDialog = true
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2ECC71)),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.height(28.dp),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text("↑ In", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+
+                        // ↓ Out Action Button (Red) (Non-viewers only)
+                        if (currentRole != UserRole.Viewer) {
+                            Button(
+                                onClick = {
+                                    quickOutProduct = filteredProducts.firstOrNull()
+                                    quickOutQty = ""
+                                    quickOutRemarks = ""
+                                    showQuickOutDialog = true
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE74C3C)),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.height(28.dp),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text("↓ Out", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-            if (filteredProducts.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize().weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Inbox,
-                            contentDescription = null,
-                            modifier = Modifier.size(50.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        )
-                        Text(
-                            "No products found",
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                            modifier = Modifier.padding(top = 10.dp)
-                        )
+                if (filteredProducts.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Inbox,
+                                contentDescription = null,
+                                modifier = Modifier.size(50.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            )
+                            Text(
+                                "No products found",
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(top = 10.dp)
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxSize().weight(1f)
+                    ) {
+                        items(filteredProducts) { product ->
+                            val productLots = lots.filter { it.productId == product.id }
+                            val totalStock = productLots.sumOf { it.quantity }
+                            val lotCount = productLots.count { it.quantity > 0.0 }
+
+                            ProductItemCard(
+                                product = product,
+                                totalStock = totalStock,
+                                lotCount = lotCount,
+                                onClick = {
+                                    viewModel.selectedProduct.value = product
+                                    viewModel.navigateTo(AppScreen.ProductDetails)
+                                }
+                            )
+                        }
                     }
                 }
             } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxSize().weight(1f)
-                ) {
-                    items(filteredProducts) { product ->
-                        val productLots = lots.filter { it.productId == product.id }
-                        val totalStock = productLots.sumOf { it.quantity }
-                        val lotCount = productLots.count { it.quantity > 0.0 }
+                // Log History (লগ হিস্টরি) Tab content showing In, Out, New logs
+                val filteredLogs = remember(stockMovements, searchQuery) {
+                    if (searchQuery.isBlank()) {
+                        stockMovements
+                    } else {
+                        stockMovements.filter {
+                            it.productName.contains(searchQuery, ignoreCase = true) ||
+                            it.lotNumber.contains(searchQuery, ignoreCase = true) ||
+                            it.remarks.contains(searchQuery, ignoreCase = true)
+                        }
+                    }
+                }
 
-                        ProductItemCard(
-                            product = product,
-                            totalStock = totalStock,
-                            lotCount = lotCount,
-                            onClick = {
-                                viewModel.selectedProduct.value = product
-                                viewModel.navigateTo(AppScreen.ProductDetails)
+                if (filteredLogs.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Receipt,
+                                contentDescription = null,
+                                modifier = Modifier.size(50.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            )
+                            Text(
+                                "No log entries found",
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(top = 10.dp)
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxSize().weight(1f)
+                    ) {
+                        items(filteredLogs) { log ->
+                            Card(
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .background(
+                                                        if (log.type.equals("IN", ignoreCase = true)) Color(0xFF2ECC71).copy(alpha = 0.15f) else Color(0xFFE74C3C).copy(alpha = 0.15f),
+                                                        CircleShape
+                                                    )
+                                                    .size(24.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (log.type.equals("IN", ignoreCase = true)) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                                                    contentDescription = null,
+                                                    tint = if (log.type.equals("IN", ignoreCase = true)) Color(0xFF2ECC71) else Color(0xFFE74C3C),
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = log.productName,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 15.sp,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Lot / Batch: ${log.lotNumber}",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        )
+                                        if (log.remarks.isNotBlank()) {
+                                            Text(
+                                                text = "Note: ${log.remarks}",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                            )
+                                        }
+                                        val logDateStr = java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", java.util.Locale.getDefault()).format(java.util.Date(log.date))
+                                        Text(
+                                            text = "Time: $logDateStr",
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                        )
+                                    }
+
+                                    Column(
+                                        horizontalAlignment = Alignment.End,
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "${if (log.type.equals("IN", ignoreCase = true)) "+" else "-"}${log.quantity}",
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 16.sp,
+                                            color = if (log.type.equals("IN", ignoreCase = true)) Color(0xFF2ECC71) else Color(0xFFE74C3C)
+                                        )
+
+                                        if (currentRole != UserRole.Viewer) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                IconButton(
+                                                    onClick = {
+                                                        logToEdit = log
+                                                        editLogQty = log.quantity.toString()
+                                                        editLogRemarks = log.remarks
+                                                        editLogLotNo = log.lotNumber
+                                                        showLogEditDialog = true
+                                                    },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Edit,
+                                                        contentDescription = "Edit Log",
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                                IconButton(
+                                                    onClick = {
+                                                        logToDelete = log
+                                                        showLogDeleteConfirm = true
+                                                    },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Delete,
+                                                        contentDescription = "Delete Log",
+                                                        tint = Color(0xFFE74C3C),
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                        )
+                        }
                     }
                 }
             }
@@ -286,6 +474,85 @@ fun ProductListScreen(
                 Icon(Icons.Default.Add, contentDescription = "Add Product")
             }
         }
+    }
+
+    // Log Delete Confirmation Dialog
+    if (showLogDeleteConfirm && logToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showLogDeleteConfirm = false },
+            title = { Text("Confirm deletion?") },
+            text = { Text("Are you sure you want to delete this log entry? Doing so will adjust the stock statistics dynamically.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteStockMovement(logToDelete!!)
+                        showLogDeleteConfirm = false
+                        logToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete (মুছে ফেলুন)", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogDeleteConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Log Edit Dialog
+    if (showLogEditDialog && logToEdit != null) {
+        AlertDialog(
+            onDismissRequest = { showLogEditDialog = false },
+            title = { Text("Edit Log Entry") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Product / Chemical: ${logToEdit!!.productName}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Transaction Type: ${logToEdit!!.type}", fontWeight = FontWeight.SemiBold, color = if (logToEdit!!.type == "IN") Color(0xFF2ECC71) else Color(0xFFE74C3C))
+                    
+                    OutlinedTextField(
+                        value = editLogLotNo,
+                        onValueChange = { editLogLotNo = it },
+                        label = { Text("Lot Number") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = editLogQty,
+                        onValueChange = { editLogQty = it },
+                        label = { Text("Quantity") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = editLogRemarks,
+                        onValueChange = { editLogRemarks = it },
+                        label = { Text("Notes / Description") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val qty = editLogQty.toDoubleOrNull() ?: logToEdit!!.quantity
+                        viewModel.updateStockMovement(logToEdit!!, qty, editLogRemarks, editLogLotNo)
+                        showLogEditDialog = false
+                        logToEdit = null
+                    }
+                ) {
+                    Text("Save Changes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogEditDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     // Modern Quick Stock-In Dialog
@@ -932,6 +1199,11 @@ fun AddEditProductScreen(
     var packagingType by remember { mutableStateOf(selectedProduct?.packagingType ?: packagingOptions[0]) }
     var dyeColor by remember { mutableStateOf(selectedProduct?.dyeColor ?: dyeColorOptions[0]) }
 
+    // Initial Registration amount / pricing inputs
+    var initialLotText by remember { mutableStateOf("") }
+    var initialQtyText by remember { mutableStateOf("") }
+    var initialPriceText by remember { mutableStateOf("") }
+
     var categoryExpanded by remember { mutableStateOf(false) }
     var unitExpanded by remember { mutableStateOf(false) }
     var packagingExpanded by remember { mutableStateOf(false) }
@@ -1146,6 +1418,54 @@ fun AddEditProductScreen(
                     }
                 }
             }
+
+            if (selectedProduct == null) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Initial Inventory Setup (অপশনাল স্টক এন্টি)",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = initialLotText,
+                        onValueChange = { initialLotText = it },
+                        label = { Text("Initial Lot Number (লট নম্বর)") },
+                        placeholder = { Text("e.g. LOT-A01") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = initialQtyText,
+                        onValueChange = { initialQtyText = it },
+                        label = { Text("Initial Quantity Amount (প্রারম্ভিক পরিমাণ)") },
+                        placeholder = { Text("e.g. 50") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = initialPriceText,
+                        onValueChange = { initialPriceText = it },
+                        label = { Text("Initial Purchase Unit Price (ক্রয় মূল্য)") },
+                        placeholder = { Text("e.g. 150.0") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -1163,7 +1483,10 @@ fun AddEditProductScreen(
                         lowLimit = lowLimit,
                         unit = unit,
                         packagingType = packagingType,
-                        dyeColor = dyeColor
+                        dyeColor = dyeColor,
+                        initialLotNum = initialLotText,
+                        initialQty = initialQtyText.toDoubleOrNull() ?: 0.0,
+                        initialPrice = initialPriceText.toDoubleOrNull() ?: 0.0
                     )
                     viewModel.navigateTo(AppScreen.ProductList)
                 }

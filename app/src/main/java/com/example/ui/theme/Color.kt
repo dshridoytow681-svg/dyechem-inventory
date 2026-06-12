@@ -10,11 +10,11 @@ val SurfaceDark = Color(0xFF222831)
 val TextLight = Color(0xFFEEEEEE)
 
 // Light Palette
-val PrimaryIndustrial = Color(0xFF0D7377)
-val SecondaryLight = Color(0xFFEFEFEF)
-val BackgroundLight = Color(0xFFF4F6F9)
+val PrimaryIndustrial = Color(0xFF0D7C71)
+val SecondaryLight = Color(0xFFECF1F0)
+val BackgroundLight = Color(0xFFEFF3F2)
 val SurfaceLight = Color(0xFFFFFFFF)
-val TextDark = Color(0xFF222831)
+val TextDark = Color(0xFF1E2927)
 
 // Accent / Status Colors
 val DyeRed = Color(0xFFE84545)
